@@ -1,8 +1,6 @@
-import PrismaPkg from "@prisma/client"
+import { PrismaClient } from "./generated/prisma"
 
-const { PrismaClient } = PrismaPkg as typeof import("@prisma/client") | any
-
-const globalForPrisma = globalThis as unknown as { prisma: InstanceType<typeof PrismaClient> }
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient }
 
 export const db = globalForPrisma.prisma || new PrismaClient()
 

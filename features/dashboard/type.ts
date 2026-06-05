@@ -19,4 +19,3 @@ export interface User {
     user: User
     Starmark: { isMarked: boolean }[]
   }
-  

@@ -27,6 +27,8 @@ import {
 import Image from "next/image";
 import { useState } from "react";
 
+
+
 // TemplateSelectionModal.tsx
 type TemplateSelectionModalProps = {
   isOpen: boolean;
@@ -37,6 +39,8 @@ type TemplateSelectionModalProps = {
     description?: string;
   }) => void;
 };
+
+
 
 interface TemplateOption {
   id: string;
@@ -49,6 +53,7 @@ interface TemplateOption {
   features: string[];
   category: "frontend" | "backend" | "fullstack";
 }
+
 
 const templates: TemplateOption[] = [
   {
@@ -135,11 +140,14 @@ const templates: TemplateOption[] = [
   },
 ];
 
+
+
 const TemplateSelectionModal = ({
   isOpen,
   onClose,
   onSubmit,
 }: TemplateSelectionModalProps) => {
+
   const [step, setStep] = useState<"select" | "configure">("select");
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -147,6 +155,8 @@ const TemplateSelectionModal = ({
     "all" | "frontend" | "backend" | "fullstack"
   >("all");
   const [projectName, setProjectName] = useState("");
+
+
 
   const filteredTemplates = templates.filter((template) => {
     const matchesSearch =
@@ -210,6 +220,7 @@ const TemplateSelectionModal = ({
     setStep("select");
   };
 
+
   const renderStars = (count: number) => {
     return Array(5)
       .fill(0)
@@ -224,7 +235,9 @@ const TemplateSelectionModal = ({
       ));
   };
 
+
   return (
+    
     <Dialog
       open={isOpen}
       onOpenChange={(open) => {
@@ -237,8 +250,9 @@ const TemplateSelectionModal = ({
         }
       }}
     >
-      <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-200 max-h-[90vh] overflow-y-auto">
         {step === "select" ? (
+
           <>
             <DialogHeader>
               <DialogTitle className="text-2xl font-bold text-[#e93f3f] flex items-center gap-2">
@@ -270,7 +284,7 @@ const TemplateSelectionModal = ({
                   className="w-full sm:w-auto"
                   onValueChange={(value) => setCategory(value as any)}
                 >
-                  <TabsList className="grid grid-cols-4 w-full sm:w-[400px]">
+                  <TabsList className="grid grid-cols-4 w-full sm:w-100">
                     <TabsTrigger value="all">All</TabsTrigger>
                     <TabsTrigger value="frontend">Frontend</TabsTrigger>
                     <TabsTrigger value="backend">Backend</TabsTrigger>
@@ -309,7 +323,7 @@ const TemplateSelectionModal = ({
 
                         <div className="flex gap-4">
                           <div
-                            className="relative w-16 h-16 flex-shrink-0 flex items-center justify-center rounded-full"
+                            className="relative w-16 h-16 shrink-0 flex items-center justify-center rounded-full"
                             style={{ backgroundColor: `${template.color}15` }}
                           >
                             <Image
@@ -406,6 +420,7 @@ const TemplateSelectionModal = ({
               </div>
             </div>
           </>
+          
         ) : (
           <>
             <DialogHeader>

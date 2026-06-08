@@ -13,8 +13,24 @@ const AddNewButton = () => {
     title: string;
     template: "REACT" | "NEXTJS" | "EXPRESS" | "VUE" | "HONO" | "ANGULAR";
     description?: string;
-  } | null>(null)
+  } | null>(null);
+
   const router = useRouter()
+
+    const handleSubmit = async(data: {
+    title: string;
+    template: "REACT" | "NEXTJS" | "EXPRESS" | "VUE" | "HONO" | "ANGULAR";
+    description?: string;
+  }) => {
+    setSelectedTemplate(data)
+    const res = await createPlayground(data);
+    toast("Playground created successfully");
+    // Here you would typically handle the creation of a new playground
+    // with the selected template data
+    console.log("Creating new playground:", data)
+    setIsModalOpen(false)
+    router.push(`/playground/${res?.id}`)
+  }
 
   return (
     <>
@@ -36,7 +52,7 @@ const AddNewButton = () => {
           </Button>
           <div className="flex flex-col">
             <h1 className="text-xl font-bold text-[#e93f3f]">Add New</h1>
-            <p className="text-sm text-muted-foreground max-w-[220px]">Create a new playground</p>
+            <p className="text-sm text-muted-foreground max-w-55">Create a new playground</p>
           </div>
         </div>
 
@@ -50,6 +66,13 @@ const AddNewButton = () => {
           />
         </div>
       </div>
+
+      <TemplateSelectionModal 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+        onSubmit={handleSubmit}
+      />
+
     </>
   )
 }

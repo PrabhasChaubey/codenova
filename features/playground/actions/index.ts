@@ -94,6 +94,8 @@ export const getAllPlaygroundForUser = async ()=>{
     }
 }
 
+
+
 export const getPlaygroundById = async (id:string)=>{
     try {
         const playground = await db.playground.findUnique({
@@ -136,6 +138,7 @@ export const SaveUpdatedCode = async (playgroundId: string, data: TemplateFolder
     return null;
   }
 };
+
 
 export const deleteProjectById = async (id:string)=>{
     try {

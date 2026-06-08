@@ -1,6 +1,7 @@
 "use client";
 import TemplateSelectionModal from "@/components/modal/template-selector-modal"
 import { Button } from "@/components/ui/button"
+import { createPlayground } from "@/features/playground/actions";
 import { Plus } from 'lucide-react'
 import Image from "next/image"
 import { useRouter } from "next/navigation";
@@ -18,19 +19,19 @@ const AddNewButton = () => {
   const router = useRouter()
 
     const handleSubmit = async(data: {
-    title: string;
-    template: "REACT" | "NEXTJS" | "EXPRESS" | "VUE" | "HONO" | "ANGULAR";
-    description?: string;
-  }) => {
-    setSelectedTemplate(data)
-    const res = await createPlayground(data);
-    toast("Playground created successfully");
-    // Here you would typically handle the creation of a new playground
-    // with the selected template data
-    console.log("Creating new playground:", data)
-    setIsModalOpen(false)
-    router.push(`/playground/${res?.id}`)
-  }
+      title: string;
+      template: "REACT" | "NEXTJS" | "EXPRESS" | "VUE" | "HONO" | "ANGULAR";
+      description?: string;
+    }) => {
+      setSelectedTemplate(data)
+      const res = await createPlayground(data);
+      toast("Playground created successfully");
+      // Here we will typically handle the creation of a new playground
+      // with the selected template data
+      console.log("Creating new playground:", data)
+      setIsModalOpen(false)
+      router.push(`/playground/${res?.id}`)
+    }
 
   return (
     <>

@@ -111,7 +111,7 @@ const handleDeleteClick = async (project: Project) => {
               <TableHead>Template</TableHead>
               <TableHead>Created</TableHead>
               <TableHead>User</TableHead>
-              <TableHead className="w-[50px]">Actions</TableHead>
+              <TableHead className="w-12.5">Actions</TableHead>
             </TableRow>
           </TableHeader>
 
@@ -119,12 +119,14 @@ const handleDeleteClick = async (project: Project) => {
             {
               projects.map((project) => (
                 <TableRow key={project.id}>
-                <TableCell>
-                  <div className="flex flex-col">
-                <Link href={`/playground/${project.id}`} className="hover:underline"></Link>
-                <span className="font-semibold">{project.title}</span>
-                  </div>
-                </TableCell>
+                  <TableCell>
+                    <div className="flex flex-col">
+                      <Link href={`/playground/${project.id}`} className="hover:underline">
+                        <span className="font-semibold">{project.title}</span>
+                      </Link>
+                        <span className="tex-sm text-gray-500 line-clamp-1">{project.description}</span>
+                    </div>
+                  </TableCell>
                 <TableCell>
                   <Badge variant="outline" className="bg-[#E93F3F15] text-[#E93F3F] border-[#E93F3F]">
                     {project.template}

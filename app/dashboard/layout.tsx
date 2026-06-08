@@ -1,8 +1,9 @@
 import { SidebarProvider } from "@/components/ui/sidebar"
 import { DashboardSidebar } from "@/features/dashboard/dashboard-sidebar"
-import { getAllPlaygroundForUser } from "@/features/dashboard/actions"
+
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type React from "react"
+import { getAllPlaygroundForUser } from "@/features/playground/actions";
 
 export default async function DashboardLayout({
   children,

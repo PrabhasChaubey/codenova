@@ -2,7 +2,9 @@ import AddNewButton from "@/features/dashboard/components/add-new-btn";
 import AddRepo from "@/features/dashboard/components/add-repo";
 import ProjectTable from "@/features/dashboard/components/project-table";
 import EmptyState from "@/components/ui/empty-state";
-import { getAllPlaygroundForUser, deleteProjectbyId, editProjectbyId, duplicateProjectbyId } from "@/features/dashboard/actions";
+import { duplicateProjectById, editProjectById, getAllPlaygroundForUser} from "@/features/playground/actions";
+import { deleteProjectById } from "@/features/playground/actions";
+
 
 
 const Page = async () => {
@@ -26,9 +28,9 @@ const Page = async () => {
           // @ts-ignore
           //TODO: NEED TO UPDATE THE TYPES OF THE PLAYGROUND
             projects={playgrounds}
-            onDeleteProject={deleteProjectbyId}
-            onUpdateProject={editProjectbyId}
-            onDuplicateProject={duplicateProjectbyId}
+            onDeleteProject={deleteProjectById}
+            onUpdateProject={editProjectById}
+            onDuplicateProject={duplicateProjectById}
           />
         )}
       </div>

@@ -46,6 +46,8 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import TemplateNode from "./template-node"
+import NewFolderDialog from "./dialogs/new-folder-dialog"
+import NewFileDialog from "./dialogs/new-file-dialog"
 
 
 // Using the provided interfaces
@@ -189,8 +191,17 @@ export function TemplateFileTree({
       </SidebarContent>
       <SidebarRail />
 
-      
+      <NewFileDialog
+        isOpen={isNewFileDialogOpen}
+        onClose={() => setIsNewFileDialogOpen(false)}
+        onCreateFile={handleCreateFile}
+      />
 
+      <NewFolderDialog
+        isOpen={isNewFolderDialogOpen}
+        onClose={() => setIsNewFolderDialogOpen(false)}
+        onCreateFolder={handleCreateFolder}
+      />
     </Sidebar>
   )
 }

@@ -42,6 +42,11 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { DeleteDialog } from "./dialogs/delete-dialog"
+import NewFileDialog from "./dialogs/new-file-dialog"
+import NewFolderDialog from "./dialogs/new-folder-dialog"
+import RenameFolderDialog from "./dialogs/rename-folder-dialog"
+import RenameFileDialog from "./dialogs/rename-file-dialog"
 
 
 // Using the provided interfaces
@@ -88,8 +93,6 @@ interface TemplateNodeProps {
   onRenameFile?: (file: TemplateFile, newFilename: string, newExtension: string, parentPath: string) => void
   onRenameFolder?: (folder: TemplateFolder, newFolderName: string, parentPath: string) => void
 }
-
-
 
 
 const TemplateNode = ({
@@ -144,6 +147,7 @@ const TemplateNode = ({
     return (
       <SidebarMenuItem>
         <div className="flex items-center group">
+
           <SidebarMenuButton isActive={isSelected} onClick={() => onFileSelect?.(file)} className="flex-1">
             <File className="h-4 w-4 mr-2 shrink-0" />
             <span>{fileName}</span>
@@ -171,9 +175,10 @@ const TemplateNode = ({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
         </div>
 
-        {/* <RenameFileDialog
+        <RenameFileDialog
           isOpen={isRenameDialogOpen}
           onClose={() => setIsRenameDialogOpen(false)}
           onRename={handleRenameSubmit}
@@ -190,7 +195,7 @@ const TemplateNode = ({
         itemName={fileName}
         confirmLabel="Delete"
         cancelLabel="Cancel"
-        /> */}
+        />
       </SidebarMenuItem>
     )
   } else {
@@ -318,7 +323,7 @@ const TemplateNode = ({
           </CollapsibleContent>
         </Collapsible>
 
-        {/* <NewFileDialog
+        <NewFileDialog
           isOpen={isNewFileDialogOpen}
           onClose={() => setIsNewFileDialogOpen(false)}
           onCreateFile={handleCreateFile}
@@ -337,16 +342,47 @@ const TemplateNode = ({
           currentFolderName={folderName}
         />
 
-      <DeleteDialog
-      isOpen={isDeleteDialogOpen}
-      setIsOpen={setIsDeleteDialogOpen}
-      onConfirm={confirmDelete}
-      title="Delete Folder"
-      description={`Are you sure you want to delete "${folderName}" and all its contents? This action cannot be undone.`}
-      itemName={folderName}
-      confirmLabel="Delete"
-      cancelLabel="Cancel"
-      /> */}
+        <DeleteDialog
+        isOpen={isDeleteDialogOpen}
+        setIsOpen={setIsDeleteDialogOpen}
+        onConfirm={confirmDelete}
+        title="Delete Folder"
+        description={`Are you sure you want to delete "${folderName}" and all its contents? This action cannot be undone.`}
+        itemName={folderName}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        />
+
+        <AlertDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        >
+        <AlertDialogContent>
+            <AlertDialogHeader>
+            <AlertDialogTitle>
+                Delete Folder
+            </AlertDialogTitle>
+
+            <AlertDialogDescription>
+                Are you sure you want to delete "{folderName}" and all its
+                contents? This action cannot be undone.
+            </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <AlertDialogFooter>
+            <AlertDialogCancel>
+                Cancel
+            </AlertDialogCancel>
+
+            <AlertDialogAction
+                onClick={confirmDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+                Delete
+            </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+        </AlertDialog>
       </SidebarMenuItem>
     )
   }

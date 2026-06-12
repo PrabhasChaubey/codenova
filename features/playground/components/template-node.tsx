@@ -173,7 +173,7 @@ const TemplateNode = ({
           </DropdownMenu>
         </div>
 
-        <RenameFileDialog
+        {/* <RenameFileDialog
           isOpen={isRenameDialogOpen}
           onClose={() => setIsRenameDialogOpen(false)}
           onRename={handleRenameSubmit}
@@ -181,16 +181,16 @@ const TemplateNode = ({
           currentExtension={file.fileExtension}
         />
 
-      <DeleteDialog
-      isOpen={isDeleteDialogOpen}
-      setIsOpen={setIsDeleteDialogOpen}
-      onConfirm={confirmDelete}
-      title="Delete File"
-      description={`Are you sure you want to delete "${fileName}"? This action cannot be undone.`}
-      itemName={fileName}
-      confirmLabel="Delete"
-      cancelLabel="Cancel"
-      />
+        <DeleteDialog
+        isOpen={isDeleteDialogOpen}
+        setIsOpen={setIsDeleteDialogOpen}
+        onConfirm={confirmDelete}
+        title="Delete File"
+        description={`Are you sure you want to delete "${fileName}"? This action cannot be undone.`}
+        itemName={fileName}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        /> */}
       </SidebarMenuItem>
     )
   } else {
@@ -318,7 +318,7 @@ const TemplateNode = ({
           </CollapsibleContent>
         </Collapsible>
 
-        <NewFileDialog
+        {/* <NewFileDialog
           isOpen={isNewFileDialogOpen}
           onClose={() => setIsNewFileDialogOpen(false)}
           onCreateFile={handleCreateFile}
@@ -346,7 +346,7 @@ const TemplateNode = ({
       itemName={folderName}
       confirmLabel="Delete"
       cancelLabel="Cancel"
-      />
+      /> */}
       </SidebarMenuItem>
     )
   }

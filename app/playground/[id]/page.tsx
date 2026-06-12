@@ -7,29 +7,39 @@ import { useParams } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
 import React from 'react';
 import { TemplateFileTree } from '@/features/playground/components/template-file-tree';
+import { useFileExplorer } from '@/features/playground/hooks/useFileExplorer';
 
 const Page = () => {
     const{id}=useParams<{id:string}>();
-    const {playgroundData,templateData,isLoading,error,saveTemplateData}= usePlayground(id)
+    const {playgroundData,templateData,isLoading,error,saveTemplateData}= usePlayground(id);
+
+    const {
+        activeFileId,
+        closeAllFiles,
+        openFile,
+        closeFile,
+        editorContent,
+        updateFileContent,
+        handleAddFile,
+        handleAddFolder,
+        handleDeleteFile,
+        handleDeleteFolder,
+        handleRenameFile,
+        handleRenameFolder,
+        openFiles,
+        setTemplateData,
+        setActiveFileId,
+        setPlaygroundId,
+        setOpenFiles,
+    } = useFileExplorer();
+
+    //Create wrapper functions that pass saveTemplateData
+   
 
   return (
     <div>
         <>
-        {/* todo: template tree*/}
-        {templateData && (
-        <TemplateFileTree
-          data={templateData}
-        //   onFileSelect={handleFileSelect}
-        //   selectedFile={activeFile}
-        //   title="File Explorer"
-        //   onAddFile={wrappedHandleAddFile}
-        //   onAddFolder={wrappedHandleAddFolder}
-        //   onDeleteFile={wrappedHandleDeleteFile}
-        //   onDeleteFolder={wrappedHandleDeleteFolder}
-        //   onRenameFile={wrappedHandleRenameFile}
-        //   onRenameFolder={wrappedHandleRenameFolder}
-        />
-        )}
+        <TemplateFileTree data={templateData!}/>
 
         <SidebarInset>
             <header className="felx h-16 shrink-0 items-center gap-2 border-b px-4">

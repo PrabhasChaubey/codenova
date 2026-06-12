@@ -6,6 +6,7 @@ import { TooltipProvider } from '@base-ui/react';
 import { useParams } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
 import React from 'react';
+import { TemplateFileTree } from '@/features/playground/components/template-file-tree';
 
 const Page = () => {
     const{id}=useParams<{id:string}>();
@@ -15,6 +16,20 @@ const Page = () => {
     <div>
         <>
         {/* todo: template tree*/}
+        {templateData && (
+        <TemplateFileTree
+          data={templateData}
+        //   onFileSelect={handleFileSelect}
+        //   selectedFile={activeFile}
+        //   title="File Explorer"
+        //   onAddFile={wrappedHandleAddFile}
+        //   onAddFolder={wrappedHandleAddFolder}
+        //   onDeleteFile={wrappedHandleDeleteFile}
+        //   onDeleteFolder={wrappedHandleDeleteFolder}
+        //   onRenameFile={wrappedHandleRenameFile}
+        //   onRenameFolder={wrappedHandleRenameFolder}
+        />
+        )}
 
         <SidebarInset>
             <header className="felx h-16 shrink-0 items-center gap-2 border-b px-4">

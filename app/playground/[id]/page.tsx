@@ -3,7 +3,7 @@ import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { usePlayground } from '@/features/playground/hooks/usePlayground';
 import { useParams } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { TemplateFileTree } from '@/features/playground/components/template-file-tree';
 import { useFileExplorer } from '@/features/playground/hooks/useFileExplorer';
 import { TooltipProvider,Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
@@ -12,6 +12,8 @@ import { FileText, Save, Settings, X } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { TemplateFile } from '@/features/playground/libs/path-to-json';
+import { ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
+import PlaygroundEditor from '@/features/playground/components/playground-editor';
 
 
 
@@ -40,6 +42,18 @@ const Page = () => {
         setPlaygroundId,
         setOpenFiles,
     } = useFileExplorer();
+
+    // Set template data when playground loads
+    React.useEffect(() => {
+        setPlaygroundId(id);
+    }, [id, setPlaygroundId]);
+
+    useEffect(() => {
+        if (templateData && !openFiles.length) {
+            setTemplateData(templateData);
+        }
+    }, [templateData, setTemplateData, openFiles.length]);
+
 
     //Create wrapper functions that pass saveTemplateData
 
@@ -190,19 +204,30 @@ const Page = () => {
 
                         <div className='flex-1'>
                             {/*editor and preview */}
+                            {/* @ts-ignore - ResizablePanelGroup accepts a direction prop at runtime */}
+                            <ResizablePanelGroup direction={'horizontal'} className='h-full'>
+                                <ResizablePanel defaultSize={isPreviewVisible ? 50:100}>
+                                    <PlaygroundEditor
+                                    activeFile={activeFile}
+                                    content={activeFile?.content || ""}
+                                    onContentChange={(value)=> activeFileId && updateFileContent(activeFileId,value)}/>
+
+                                </ResizablePanel>
+
+                            </ResizablePanelGroup>
                             
-                        <div/>
+                        </div>
                     </div>
                     ) : (
                     <div className="flex flex-col h-full items-center justify-center text-muted-foreground gap-4">
                         <FileText className="size-16 text-gray-300" />
                         <div className="text-center">
-                        <p className="text-lg font-medium">
-                            No Files Open
-                        </p>
-                        <p className='text-sm text-gray-500'>
-                            Select a file from the sidebar to start editing
-                        </p>
+                            <p className="text-lg font-medium">
+                                No Files Open
+                            </p>
+                            <p className='text-sm text-gray-500'>
+                                Select a file from the sidebar to start editing
+                            </p>
                         </div>
                     </div>
                     )

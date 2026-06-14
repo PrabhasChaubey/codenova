@@ -3,7 +3,7 @@ import { SidebarInset, SidebarTrigger } from '@/components/ui/sidebar';
 import { usePlayground } from '@/features/playground/hooks/usePlayground';
 import { useParams } from 'next/navigation';
 import { Separator } from '@/components/ui/separator';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { TemplateFileTree } from '@/features/playground/components/template-file-tree';
 import { useFileExplorer } from '@/features/playground/hooks/useFileExplorer';
 import { TooltipProvider,Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
@@ -17,6 +17,8 @@ import PlaygroundEditor from '@/features/playground/components/playground-editor
 import WebContainerPreview from '@/features/webContainers/components/webcontainer-preview';
 import LoadingStep from '@/components/ui/loader';
 import { useWebContainer } from '@/features/webContainers/hooks/useWebContainer';
+import { findFilePath } from '@/features/playground/libs';
+import { toast } from 'sonner';
 
 
 
@@ -55,6 +57,8 @@ const Page = () => {
         // @ts-ignore
     } = useWebContainer({ templateData }); 
 
+    const lastSyncedContent = useRef<Map<string, string>>(new Map());
+    
     // Set template data when playground loads
     React.useEffect(() => {
         setPlaygroundId(id);
@@ -76,6 +80,124 @@ const Page = () => {
     const handleFileSelect = (file: TemplateFile) => {
         openFile(file);
     };
+
+
+    const handleSave = useCallback(
+        async (fileId?: string) => {
+        const targetFileId = fileId || activeFileId;
+        if (!targetFileId) return;
+
+        const fileToSave = openFiles.find((f) => f.id === targetFileId);
+        if (!fileToSave) return;
+
+        const latestTemplateData = useFileExplorer.getState().templateData;
+
+        if (!latestTemplateData) return;
+
+        try {
+            const filePath = findFilePath(fileToSave, latestTemplateData);
+            if (!filePath) {
+            toast.error(
+                `Could not find path for file: ${fileToSave.filename}.${fileToSave.fileExtension}`
+            );
+            return;
+            }
+
+            // Update file content in template data (clone for immutability)
+            const updatedTemplateData = JSON.parse(
+            JSON.stringify(latestTemplateData)
+            );
+            const updateFileContent = (items: any[]): any[] =>
+            items.map((item) => {
+                if ("folderName" in item) {
+                return { ...item, items: updateFileContent(item.items) };
+                } else if (
+                item.filename === fileToSave.filename &&
+                item.fileExtension === fileToSave.fileExtension
+                ) {
+                return { ...item, content: fileToSave.content };
+                }
+                return item;
+            });
+            updatedTemplateData.items = updateFileContent(
+            updatedTemplateData.items
+            );
+
+            // Sync with WebContainer
+            if (writeFileSync) {
+            await writeFileSync(filePath, fileToSave.content);
+            lastSyncedContent.current.set(fileToSave.id, fileToSave.content);
+            if (instance && instance.fs) {
+                await instance.fs.writeFile(filePath, fileToSave.content);
+            }
+            }
+
+            // Use saveTemplateData to persist changes
+            await saveTemplateData(updatedTemplateData);
+            setTemplateData(updatedTemplateData);
+
+            // Update open files
+            const updatedOpenFiles = openFiles.map((f) =>
+            f.id === targetFileId
+                ? {
+                    ...f,
+                    content: fileToSave.content,
+                    originalContent: fileToSave.content,
+                    hasUnsavedChanges: false,
+                }
+                : f
+            );
+            setOpenFiles(updatedOpenFiles);
+
+            toast.success(
+            `Saved ${fileToSave.filename}.${fileToSave.fileExtension}`
+            );
+        } catch (error) {
+            console.error("Error saving file:", error);
+            toast.error(
+            `Failed to save ${fileToSave.filename}.${fileToSave.fileExtension}`
+            );
+            throw error;
+        }
+        },
+        [
+        activeFileId,
+        openFiles,
+        writeFileSync,
+        instance,
+        saveTemplateData,
+        setTemplateData,
+        setOpenFiles,
+        ]
+    );
+
+    const handleSaveAll = async () => {
+        const unsavedFiles = openFiles.filter((f) => f.hasUnsavedChanges);
+
+        if (unsavedFiles.length === 0) {
+        toast.info("No unsaved changes");
+        return;
+        }
+
+        try {
+        await Promise.all(unsavedFiles.map((f) => handleSave(f.id)));
+        toast.success(`Saved ${unsavedFiles.length} file(s)`);
+        } catch (error) {
+        toast.error("Failed to save some files");
+        }
+    };  
+  
+    // Add event to save file by click ctrl + s
+    React.useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.ctrlKey && e.key === "s") {
+            e.preventDefault();
+            handleSave();
+        }
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [handleSave]);
 
 
   // Error state
@@ -151,7 +273,7 @@ const Page = () => {
                                     <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={() =>{}}
+                                    onClick={() =>handleSave}
                                     disabled={!activeFile || !activeFile.hasUnsavedChanges}
                                     >
                                     <Save className="h-4 w-4" />
@@ -165,7 +287,7 @@ const Page = () => {
                                     <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={() =>{}}
+                                    onClick={handleSaveAll}
                                     disabled={!hasUnsavedChanges}
                                     >
                                     <Save className="h-4 w-4" /> All

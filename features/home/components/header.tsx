@@ -41,7 +41,7 @@ export function Header() {
                     />
 
                     <span className="hidden sm:block font-extrabold text-lg">
-                      VibeCode Editor
+                      CodeNova
                     </span>
                   </Link>
                   <span className="text-zinc-300 dark:text-zinc-700">|</span>
@@ -54,13 +54,13 @@ export function Header() {
                       Docs
                     </Link>
                     {/* <Link
-                                            href="/pricing"
-                                            className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
-                                        >
-                                            Pricing
-                                        </Link> */}
+                          href="/pricing"
+                          className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors"
+                          >
+                          Pricing
+                    </Link> */}
                     <Link
-                      href="https://codesnippetui.pro/templates?utm_source=codesnippetui.com&utm_medium=header"
+                      href="https://github.com/PrabhasChaubey/codenova"
                       target="_blank"
                       className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100 transition-colors flex items-center gap-2"
                     >

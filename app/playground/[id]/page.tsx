@@ -19,6 +19,7 @@ import LoadingStep from '@/components/ui/loader';
 import { useWebContainer } from '@/features/webContainers/hooks/useWebContainer';
 import { findFilePath } from '@/features/playground/libs';
 import { toast } from 'sonner';
+import ToggleAI from '@/features/playground/components/toggle-ai';
 
 
 
@@ -376,7 +377,11 @@ const Page = () => {
                             </Tooltip>
 
                             {/*TODO:Toggle AI Tooltip */}
-
+                            <ToggleAI
+                            isEnabled={true}
+                            onToggle={()=>{}}
+                            suggestionLoading={false}
+                            />
 
                             <DropdownMenu>
 

@@ -20,9 +20,116 @@ const PlaygroundEditor = ({
   activeFile,
   content,
   onContentChange,
+  suggestion,
+  suggestionLoading,
+  suggestionPosition,
+  onAcceptSuggestion,
+  onRejectSuggestion,
+  onTriggerSuggestion
 }: PlaygroundEditorProps) => {
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<Monaco | null>(null);
+
+  const inlineCompletionProviderRef = useRef<any>(null)
+  const currentSuggestionRef = useRef<{
+    text: string
+    position: { line: number; column: number }
+    id: string
+  } | null>(null)
+  const isAcceptingSuggestionRef = useRef(false)
+  const suggestionAcceptedRef = useRef(false)
+  const suggestionTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const tabCommandRef = useRef<any>(null)
+
+  // Generate unique ID for each suggestion
+  const generateSuggestionId = () => `suggestion-${Date.now()}-${Math.random()}`
+
+  // Create inline completion provider
+  const createInlineCompletionProvider = useCallback(
+    (monaco: Monaco) => {
+      return {
+        provideInlineCompletions: async (model: any, position: any, context: any, token: any) => {
+          console.log("provideInlineCompletions called", {
+            hasSuggestion: !!suggestion,
+            hasPosition: !!suggestionPosition,
+            currentPos: `${position.lineNumber}:${position.column}`,
+            suggestionPos: suggestionPosition ? `${suggestionPosition.line}:${suggestionPosition.column}` : null,
+            isAccepting: isAcceptingSuggestionRef.current,
+            suggestionAccepted: suggestionAcceptedRef.current,
+          })
+
+          // Don't provide completions if we're currently accepting or have already accepted
+          if (isAcceptingSuggestionRef.current || suggestionAcceptedRef.current) {
+            console.log("Skipping completion - already accepting or accepted")
+            return { items: [] }
+          }
+
+          // Only provide suggestion if we have one
+          if (!suggestion || !suggestionPosition) {
+            console.log("No suggestion or position available")
+            return { items: [] }
+          }
+
+          // Check if current position matches suggestion position (with some tolerance)
+          const currentLine = position.lineNumber
+          const currentColumn = position.column
+
+          const isPositionMatch =
+            currentLine === suggestionPosition.line &&
+            currentColumn >= suggestionPosition.column &&
+            currentColumn <= suggestionPosition.column + 2 // Small tolerance
+
+          if (!isPositionMatch) {
+            console.log("Position mismatch", {
+              current: `${currentLine}:${currentColumn}`,
+              expected: `${suggestionPosition.line}:${suggestionPosition.column}`,
+            })
+            return { items: [] }
+          }
+
+          const suggestionId = generateSuggestionId()
+          currentSuggestionRef.current = {
+            text: suggestion,
+            position: suggestionPosition,
+            id: suggestionId,
+          }
+
+          console.log("Providing inline completion", { suggestionId, suggestion: suggestion.substring(0, 50) + "..." })
+
+          // Clean the suggestion text (remove \r characters)
+          const cleanSuggestion = suggestion.replace(/\r/g, "")
+
+          return {
+            items: [
+              {
+                insertText: cleanSuggestion,
+                range: new monaco.Range(
+                  suggestionPosition.line,
+                  suggestionPosition.column,
+                  suggestionPosition.line,
+                  suggestionPosition.column,
+                ),
+                kind: monaco.languages.CompletionItemKind.Snippet,
+                label: "AI Suggestion",
+                detail: "AI-generated code suggestion",
+                documentation: "Press Tab to accept",
+                sortText: "0000", // High priority
+                filterText: "",
+                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+              },
+            ],
+          }
+        },
+        freeInlineCompletions: (completions: any) => {
+          console.log("freeInlineCompletions called")
+        },
+      }
+    },
+    [suggestion, suggestionPosition],
+  )
+
+  
+ 
 
   const handleEditorDidMount = (
     editor: any,

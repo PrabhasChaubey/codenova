@@ -52,6 +52,8 @@ import {
   DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
 import "katex/dist/katex.min.css";
+import { EnhancedCodeBlock } from "./ai-chat-code-blocks";
+import { EnhancedFilePreview } from "./file-preview";
 
 
 interface FileAttachment {
@@ -105,7 +107,202 @@ interface AIChatSidePanelProps {
   theme?: "dark" | "light";
 }
 
-const AIChatSidePanel= ({
+const MessageTypeIndicator: React.FC<{
+  type?: string;
+  model?: string;
+  tokens?: number;
+}> = ({ type, model, tokens }) => {
+  const getTypeConfig = (type?: string) => {
+    switch (type) {
+      case "code_review":
+        return { icon: Code, color: "text-blue-400", label: "Code Review" };
+      case "suggestion":
+        return {
+          icon: Sparkles,
+          color: "text-purple-400",
+          label: "Suggestion",
+        };
+      case "error_fix":
+        return { icon: RefreshCw, color: "text-red-400", label: "Error Fix" };
+      case "optimization":
+        return { icon: Zap, color: "text-yellow-400", label: "Optimization" };
+      default:
+        return { icon: MessageSquare, color: "text-zinc-400", label: "Chat" };
+    }
+  };
+
+  const config = getTypeConfig(type);
+  const Icon = config.icon;
+
+  return (
+    <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center gap-1">
+        <Icon className={cn("h-3 w-3", config.color)} />
+        <span className={cn("text-xs font-medium", config.color)}>
+          {config.label}
+        </span>
+      </div>
+      <div className="flex items-center gap-2 text-xs text-zinc-500">
+        {model && <span>{model}</span>}
+        {tokens && <span>{tokens} tokens</span>}
+      </div>
+    </div>
+  );
+};
+
+const CodeSuggestionCard: React.FC<{
+  suggestion: CodeSuggestion;
+  onInsert: () => void;
+  onCopy: () => void;
+  onRun?: (code: string, language: string) => void;
+  activeFileName?: string;
+}> = ({ suggestion, onInsert, onCopy, onRun, activeFileName }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await onCopy();
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const getCategoryColor = (category?: string) => {
+    switch (category) {
+      case "optimization":
+        return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20";
+      case "bug_fix":
+        return "bg-red-500/10 text-red-400 border-red-500/20";
+      case "feature":
+        return "bg-green-500/10 text-green-400 border-green-500/20";
+      case "refactor":
+        return "bg-blue-500/10 text-blue-400 border-blue-500/20";
+      case "security":
+        return "bg-purple-500/10 text-purple-400 border-purple-500/20";
+      default:
+        return "bg-zinc-500/10 text-zinc-400 border-zinc-500/20";
+    }
+  };
+
+  return (
+    <div className="border border-zinc-700/50 rounded-lg overflow-hidden bg-zinc-900/30 my-3 group hover:bg-zinc-900/50 transition-colors">
+      <div className="p-3 bg-zinc-800/30">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <h4 className="text-sm font-medium text-zinc-200">
+                {suggestion.title}
+              </h4>
+              {suggestion.category && (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-xs",
+                    getCategoryColor(suggestion.category)
+                  )}
+                >
+                  {suggestion.category}
+                </Badge>
+              )}
+              {suggestion.confidence && (
+                <Badge variant="outline" className="text-xs">
+                  {Math.round(suggestion.confidence * 100)}% match
+                </Badge>
+              )}
+            </div>
+            <p className="text-xs text-zinc-400 mb-2">
+              {suggestion.description}
+            </p>
+            {suggestion.fileName && (
+              <div className="text-xs text-zinc-500">
+                Target: {suggestion.fileName}
+                {suggestion.insertPosition && (
+                  <span className="ml-2">
+                    Line {suggestion.insertPosition.line}:
+                    {suggestion.insertPosition.column}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleCopy}
+                  className="h-7 px-2 text-zinc-400 hover:text-zinc-200"
+                >
+                  {copied ? (
+                    <Check className="h-3 w-3" />
+                  ) : (
+                    <Copy className="h-3 w-3" />
+                  )}
+                  <span className="ml-1 text-xs">Copy</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Copy code to clipboard</TooltipContent>
+            </Tooltip>
+
+            {onRun &&
+              ["javascript", "python", "bash"].includes(
+                suggestion.language
+              ) && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() =>
+                        onRun(suggestion.code, suggestion.language)
+                      }
+                      className="h-7 px-2 text-green-400 hover:text-green-300 hover:bg-green-500/10"
+                    >
+                      <Terminal className="h-3 w-3" />
+                      <span className="ml-1 text-xs">Run</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Run code</TooltipContent>
+                </Tooltip>
+              )}
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onInsert}
+                  className="h-7 px-2 text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+                  disabled={!activeFileName}
+                >
+                  <Plus className="h-3 w-3" />
+                  <span className="ml-1 text-xs">Insert</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                {activeFileName
+                  ? `Insert into ${activeFileName}`
+                  : "No active file"}
+              </TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
+      </div>
+
+      <div className="border-t border-zinc-700/50">
+        <EnhancedCodeBlock
+          className={`language-${suggestion.language}`}
+          onInsert={() => onInsert()}
+          onRun={onRun}
+          fileName={suggestion.fileName}
+        >
+          {suggestion.code}
+        </EnhancedCodeBlock>
+      </div>
+    </div>
+  );
+};
+
+export const AIChatSidePanel: React.FC<AIChatSidePanelProps> = ({
   isOpen,
   onClose,
   onInsertCode,
@@ -114,8 +311,8 @@ const AIChatSidePanel= ({
   activeFileContent,
   activeFileLanguage,
   cursorPosition,
-  theme = "dark",      
-}:AIChatSidePanelProps) => {
+  theme = "dark",
+}) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -206,7 +403,7 @@ const AIChatSidePanel= ({
     if (content.includes("SELECT") && content.includes("FROM")) return "sql";
 
     return "text";
-  };  
+  };
 
   const detectFileType = (
     fileName: string,
@@ -500,6 +697,115 @@ const AIChatSidePanel= ({
     }
   };
 
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
+
+    const messageType =
+      chatMode === "chat"
+        ? "chat"
+        : chatMode === "review"
+        ? "code_review"
+        : chatMode === "fix"
+        ? "error_fix"
+        : "optimization";
+    const newMessage: ChatMessage = {
+      role: "user",
+      content: input.trim(),
+      timestamp: new Date(),
+      attachments: [...attachments],
+      id: Date.now().toString(),
+      type: messageType,
+    };
+
+    setMessages((prev) => [...prev, newMessage]);
+    setInput("");
+    setIsLoading(true);
+
+    try {
+      // Prepare enhanced context
+      let contextualMessage = getChatModePrompt(chatMode, input.trim(), {
+        activeFile: activeFileName,
+        activeFileContent: activeFileContent?.substring(0, 2000), // Increased context size
+        language: activeFileLanguage,
+        cursorPosition,
+      });
+
+      if (attachments.length > 0) {
+        contextualMessage += "\n\nAttached files:\n";
+        attachments.forEach((file) => {
+          contextualMessage += `\n**${file.name}** (${file.language}, ${
+            file.type
+          }):\n\`\`\`${file.language}\n${file.content.substring(
+            0,
+            1000
+          )}\n\`\`\`\n`;
+        });
+      }
+
+      const response = await fetch("/api/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: contextualMessage,
+          history: messages.slice(-10).map((msg) => ({
+            role: msg.role,
+            content: msg.content,
+          })),
+          stream: streamResponse,
+          mode: chatMode,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const suggestions = generateCodeSuggestions(input.trim(), attachments);
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: data.response,
+            timestamp: new Date(),
+            suggestions: suggestions.length > 0 ? suggestions : undefined,
+            id: Date.now().toString(),
+            type: messageType,
+            tokens: data.tokens,
+            model: data.model || "AI Assistant",
+          },
+        ]);
+      } else {
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content:
+              "Sorry, I encountered an error while processing your request. Please try again.",
+            timestamp: new Date(),
+            id: Date.now().toString(),
+          },
+        ]);
+      }
+    } catch (error) {
+      console.error("Error sending message:", error);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content:
+            "I'm having trouble connecting right now. Please check your internet connection and try again.",
+          timestamp: new Date(),
+          id: Date.now().toString(),
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
+      setAttachments([]);
+    }
+  };
+
   const handleInsertCode = (
     code: string,
     fileName?: string,
@@ -513,7 +819,7 @@ const AIChatSidePanel= ({
       );
     }
   };
- 
+
   const handleCopySuggestion = async (code: string) => {
     try {
       await navigator.clipboard.writeText(code);
@@ -564,7 +870,7 @@ const AIChatSidePanel= ({
 
   return (
     <TooltipProvider>
-        <>
+      <>
         {/* Backdrop */}
         <div
           className={cn(
@@ -597,7 +903,7 @@ const AIChatSidePanel= ({
                 </p>
               </div>
             </div>
-          )}  
+          )}
 
           {/* Enhanced Header */}
           <div className="shrink-0 border-b border-zinc-800 bg-zinc-900/80 backdrop-blur-sm">
@@ -618,7 +924,6 @@ const AIChatSidePanel= ({
                   </p>
                 </div>
               </div>
-
               <div className="flex items-center gap-2">
                 {activeFileName && (
                   <Tooltip>
@@ -635,7 +940,7 @@ const AIChatSidePanel= ({
                     </TooltipTrigger>
                     <TooltipContent>Add current file as context</TooltipContent>
                   </Tooltip>
-                )} 
+                )}
 
                 <Button
                   variant="ghost"
@@ -688,7 +993,7 @@ const AIChatSidePanel= ({
                   className="h-8 w-8 p-0 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800"
                 >
                   <X className="h-4 w-4" />
-                </Button>                              
+                </Button>
               </div>
             </div>
 
@@ -768,7 +1073,6 @@ const AIChatSidePanel= ({
                 </div>
               </div>
             </Tabs>
-
           </div>
 
           {/* Messages Container */}
@@ -843,25 +1147,24 @@ const AIChatSidePanel= ({
                           remarkPlugins={[remarkGfm, remarkMath]}
                           rehypePlugins={[rehypeKatex]}
                           components={{
-                            code: ({
-                              children,
-                              className,
-                              inline: _inline,
-                            }) => (
-                              <EnhancedCodeBlock
-                                className={className}
-                                inline={_inline as boolean}
-                                onInsert={
-                                  onInsertCode
-                                    ? (code) => handleInsertCode(code)
-                                    : undefined
-                                }
-                                onRun={onRunCode}
-                                theme={theme}
-                              >
-                                {String(children)}
-                              </EnhancedCodeBlock>
-                            ),
+                            code: ({ children, className, ...props }: any) => {
+                              const inline = props.inline as boolean | undefined;
+                              return (
+                                <EnhancedCodeBlock
+                                  className={className}
+                                  inline={inline}
+                                  onInsert={
+                                    onInsertCode
+                                      ? (code) => handleInsertCode(code)
+                                      : undefined
+                                  }
+                                  onRun={onRunCode}
+                                  theme={theme}
+                                >
+                                  {String(children)}
+                                </EnhancedCodeBlock>
+                              );
+                            },
                           }}
                         >
                           {msg.content}
@@ -982,13 +1285,127 @@ const AIChatSidePanel= ({
               <div ref={messagesEndRef} className="h-1" />
             </div>
           </div>
-          
+          {/* Enhanced File Attachments Preview */}
+          {attachments.length > 0 && (
+            <div className="shrink-0 border-t border-zinc-800 bg-zinc-900/50 p-4">
+              <div className="text-sm font-medium text-zinc-300 mb-3 flex items-center justify-between">
+                <span>Attached Code Files ({attachments.length})</span>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="text-xs">
+                    {attachments.reduce((acc, file) => acc + file.size, 0)}{" "}
+                    chars total
+                  </Badge>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setAttachments([])}
+                    className="h-6 px-2 text-xs text-zinc-400 hover:text-zinc-200"
+                  >
+                    <Minus className="h-3 w-3 mr-1" />
+                    Clear All
+                  </Button>
+                </div>
+              </div>
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {attachments.map((file) => (
+                  <EnhancedFilePreview
+                    key={file.id}
+                    file={{ ...file, type: "code" }}
+                    onRemove={() => removeAttachment(file.id)}
+                    compact={true}
+                    onInsert={
+                      onInsertCode
+                        ? (code) => handleInsertCode(code)
+                        : undefined
+                    }
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Enhanced Input Form */}
+          <form
+            onSubmit={handleSendMessage}
+            className="shrink-0 p-4 border-t border-zinc-800 bg-zinc-900/80 backdrop-blur-sm"
+          >
+            <div className="flex items-end gap-3">
+              <div className="flex-1 relative">
+                <Textarea
+                  placeholder={
+                    chatMode === "chat"
+                      ? "Ask about your code, request improvements, or paste code to analyze..."
+                      : chatMode === "review"
+                      ? "Describe what you'd like me to review in your code..."
+                      : chatMode === "fix"
+                      ? "Describe the issue you're experiencing..."
+                      : "Describe what you'd like me to optimize..."
+                  }
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onPaste={handlePaste}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                      handleSendMessage(e as any);
+                    }
+                  }}
+                  disabled={isLoading}
+                  className="min-h-11 max-h-32 bg-zinc-800/50 border-zinc-700/50 text-zinc-100 placeholder-zinc-500 focus:border-blue-500 focus:ring-blue-500/20 resize-none pr-20"
+                  rows={1}
+                />
+                <div className="absolute right-3 bottom-3 flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="h-6 w-6 p-0 text-zinc-500 hover:text-zinc-300"
+                  >
+                    <Paperclip className="h-3 w-3" />
+                  </Button>
+                  <kbd className="hidden sm:inline-block px-1.5 py-0.5 text-xs text-zinc-500 bg-zinc-800 border border-zinc-700 rounded">
+                    ⌘↵
+                  </kbd>
+                </div>
+              </div>
+              <Button
+                type="submit"
+                disabled={isLoading || !input.trim()}
+                className="h-11 px-4 bg-blue-600 hover:bg-blue-700 text-white border-0 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {isLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
+          </form>
+
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept=".js,.jsx,.ts,.tsx,.py,.java,.cpp,.c,.html,.css,.json,.md,.txt,.sql,.sh,.php,.rb,.go,.rs,.swift,.kt,.dart,.r,.scala,.clj,.hs,.elm,.vue,.svelte"
+            className="hidden"
+            onChange={(e) => {
+              const files = Array.from(e.target.files || []);
+              files.forEach((file) => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                  const content = event.target?.result as string;
+                  addFileAttachment(file.name, content, file.type);
+                };
+                reader.readAsText(file);
+              });
+              e.target.value = "";
+            }}
+          />
         </div>
-
-
-        </>
+      </>
     </TooltipProvider>
-  )
-}
+  );
+};
 
-export default AIChatSidePanel
+

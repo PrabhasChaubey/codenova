@@ -62,25 +62,31 @@ export const DashboardSidebar = ({ initialPlaygroundData }: { initialPlaygroundD
   const [starredPlaygrounds, setStarredPlaygrounds] = useState(initialPlaygroundData.filter((p) => p.starred))
   const [recentPlaygrounds, setRecentPlaygrounds] = useState(initialPlaygroundData)
 
+
   return (
     <Sidebar variant="inset" collapsible="icon" className="border border-r">
+
       <SidebarHeader>
         <div className="flex items-center gap-2 px-4 py-3 justify-center">
           <Image src={"/logo.svg"} alt="logo" height={60} width={60} />
-        </div>
-       
+        </div>      
       </SidebarHeader>
+
+
       <SidebarContent>
-        <SidebarGroup>
+
+        <SidebarGroup >
           <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive={pathname === "/"} tooltip="Home">
+
+            <SidebarMenuItem >
+              <SidebarMenuButton asChild isActive={pathname === "/"} tooltip={"Home"}>
                 <Link href="/">
                   <Home className="h-4 w-4" />
                   <span>Home</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
+
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname === "/dashboard"} tooltip="Dashboard">
                 <Link href="/dashboard">
@@ -101,9 +107,9 @@ export const DashboardSidebar = ({ initialPlaygroundData }: { initialPlaygroundD
           <SidebarGroupAction title="Add starred playground">
             <Plus className="h-4 w-4" />
           </SidebarGroupAction>
+
           <SidebarGroupContent>
             <SidebarMenu>
-
               {starredPlaygrounds.length === 0 && recentPlaygrounds.length === 0 ? (
                 <div className="text-center text-muted-foreground py-4 w-full">Create your playground</div>
               ) : (
@@ -130,6 +136,7 @@ export const DashboardSidebar = ({ initialPlaygroundData }: { initialPlaygroundD
         </SidebarGroup>
 
         <SidebarGroup>
+
           <SidebarGroupLabel>
             <History className="h-4 w-4 mr-2" />
             Recent
@@ -137,6 +144,7 @@ export const DashboardSidebar = ({ initialPlaygroundData }: { initialPlaygroundD
           <SidebarGroupAction title="Create new playground">
             <FolderPlus className="h-4 w-4" />
           </SidebarGroupAction>
+
           <SidebarGroupContent>
             <SidebarMenu>
               {starredPlaygrounds.length === 0 && recentPlaygrounds.length === 0 ? null : (
@@ -158,6 +166,7 @@ export const DashboardSidebar = ({ initialPlaygroundData }: { initialPlaygroundD
                   );
                 })
               )}
+
               <SidebarMenuItem>
                 <SidebarMenuButton asChild tooltip="View all">
                   <Link href="/playgrounds">
@@ -165,10 +174,13 @@ export const DashboardSidebar = ({ initialPlaygroundData }: { initialPlaygroundD
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
       </SidebarContent>
+
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
@@ -181,6 +193,7 @@ export const DashboardSidebar = ({ initialPlaygroundData }: { initialPlaygroundD
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
+
       <SidebarRail />
     </Sidebar>
   )

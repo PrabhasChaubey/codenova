@@ -32,8 +32,7 @@ const PlaygroundEditor = ({
 
   const inlineCompletionProviderRef = useRef<any>(null)
   const currentSuggestionRef = useRef<{
-    text: string
-    position: { line: number; column: number }
+    text: string;
     id: string
   } | null>(null)
   const isAcceptingSuggestionRef = useRef(false)
@@ -46,86 +45,51 @@ const PlaygroundEditor = ({
 
   // Create inline completion provider
   const createInlineCompletionProvider = useCallback(
-    (monaco: Monaco) => {
-      return {
-        provideInlineCompletions: async (model: any, position: any, context: any, token: any) => {
-          console.log("provideInlineCompletions called", {
-            hasSuggestion: !!suggestion,
-            hasPosition: !!suggestionPosition,
-            currentPos: `${position.lineNumber}:${position.column}`,
-            suggestionPos: suggestionPosition ? `${suggestionPosition.line}:${suggestionPosition.column}` : null,
-            isAccepting: isAcceptingSuggestionRef.current,
-            suggestionAccepted: suggestionAcceptedRef.current,
-          })
+    (monaco: Monaco) => ({
 
-          // Don't provide completions if we're currently accepting or have already accepted
-          if (isAcceptingSuggestionRef.current || suggestionAcceptedRef.current) {
-            console.log("Skipping completion - already accepting or accepted")
-            return { items: [] }
-          }
+      provideInlineCompletions: () => {
+        if (
+          !suggestion ||
+          isAcceptingSuggestionRef.current ||
+          suggestionAcceptedRef.current
+        ) {
+          return { items: [] };
+        }
 
-          // Only provide suggestion if we have one
-          if (!suggestion || !suggestionPosition) {
-            console.log("No suggestion or position available")
-            return { items: [] }
-          }
+        const suggestionId = generateSuggestionId();
 
-          // Check if current position matches suggestion position (with some tolerance)
-          const currentLine = position.lineNumber
-          const currentColumn = position.column
+        currentSuggestionRef.current = {
+          text: suggestion,
+          id: suggestionId,
+        };
 
-          const isPositionMatch =
-            currentLine === suggestionPosition.line &&
-            currentColumn >= suggestionPosition.column &&
-            currentColumn <= suggestionPosition.column + 2 // Small tolerance
-
-          if (!isPositionMatch) {
-            console.log("Position mismatch", {
-              current: `${currentLine}:${currentColumn}`,
-              expected: `${suggestionPosition.line}:${suggestionPosition.column}`,
-            })
-            return { items: [] }
-          }
-
-          const suggestionId = generateSuggestionId()
-          currentSuggestionRef.current = {
-            text: suggestion,
-            position: suggestionPosition,
-            id: suggestionId,
-          }
-
-          console.log("Providing inline completion", { suggestionId, suggestion: suggestion.substring(0, 50) + "..." })
-
-          // Clean the suggestion text (remove \r characters)
-          const cleanSuggestion = suggestion.replace(/\r/g, "")
-
-          return {
-            items: [
-              {
-                insertText: cleanSuggestion,
-                range: new monaco.Range(
-                  suggestionPosition.line,
-                  suggestionPosition.column,
-                  suggestionPosition.line,
-                  suggestionPosition.column,
-                ),
-                kind: monaco.languages.CompletionItemKind.Snippet,
-                label: "AI Suggestion",
-                detail: "AI-generated code suggestion",
-                documentation: "Press Tab to accept",
-                sortText: "0000", // High priority
-                filterText: "",
-                insertTextRules: monaco.languages.CompletionItemInsertTextRule.InsertAsSnippet,
-              },
-            ],
-          }
-        },
-        freeInlineCompletions: (completions: any) => {
-          console.log("freeInlineCompletions called")
-        },
-      }
-    },
-    [suggestion, suggestionPosition],
+        const cleanSuggestion = suggestion.replace(/\r/g, "");      
+          
+        return {
+          items: [
+            {
+              insertText: cleanSuggestion,
+              range: new monaco.Range(
+                  editorRef.current.getPosition().line,
+                  editorRef.current.getPosition().column,
+                  editorRef.current.getPosition().line,
+                  editorRef.current.getPosition().column,
+              ),
+              kind: monaco.languages.CompletionItemKind.Snippet,
+              label: "AI Suggestion",
+              detail: "AI-generated code suggestion",
+              documentation: "Press Tab to accept",
+              sortText: "0000", // High priority
+              filterText: "",
+              //prevent monaco from insertng text itself
+              insertTextRules: monaco.languages.CompletionItemInsertTextRule.KeepWhitspace,
+            },
+          ],
+        }
+      },
+      freeInlineCompletions: () => {},
+      }),
+    [suggestion],
   )
 
   // Clear current suggestion
@@ -140,19 +104,11 @@ const PlaygroundEditor = ({
 
  // Accept current suggestion with double-acceptance prevention
   const acceptCurrentSuggestion = useCallback(() => {
-    console.log("acceptCurrentSuggestion called", {
-      hasEditor: !!editorRef.current,
-      hasMonaco: !!monacoRef.current,
-      hasSuggestion: !!currentSuggestionRef.current,
-      isAccepting: isAcceptingSuggestionRef.current,
-      suggestionAccepted: suggestionAcceptedRef.current,
-    })
 
     if (!editorRef.current || !monacoRef.current || !currentSuggestionRef.current) {
       console.log("Cannot accept suggestion - missing refs")
       return false
     }
-
     // CRITICAL: Prevent double acceptance with immediate flag setting
     if (isAcceptingSuggestionRef.current || suggestionAcceptedRef.current) {
       console.log("BLOCKED: Already accepting/accepted suggestion, skipping")
@@ -163,57 +119,55 @@ const PlaygroundEditor = ({
     isAcceptingSuggestionRef.current = true
     suggestionAcceptedRef.current = true
 
-    const editor = editorRef.current
-    const monaco = monacoRef.current
-    const currentSuggestion = currentSuggestionRef.current
+    
+    //const currentSuggestion = currentSuggestionRef.current
 
     try {
+      const editor = editorRef.current
+      const monaco = monacoRef.current
       // Clean the suggestion text (remove \r characters)
-      const cleanSuggestionText = currentSuggestion.text.replace(/\r/g, "")
+      const cleanSuggestionText = currentSuggestionRef.current.text.replace(/\r/g, "")
+      const position=editor.getPosition()
 
-      console.log("ACCEPTING suggestion:", cleanSuggestionText.substring(0, 50) + "...")
+      // Safety: Prevent duplicate if already inserted
+      const modelTextAtCursor = editor
+        .getModel()
+        .getValueInRange(
+          new monaco.Range(
+            position.lineNumber,
+            position.column,
+            position.lineNumber,
+            position.column + cleanSuggestionText.length
+          )
+        );
 
-      // Get current cursor position to validate
-      const currentPosition = editor.getPosition()
-      const suggestionPos = currentSuggestion.position
-
-      // Verify we're still at the suggestion position
-      if (
-        currentPosition.lineNumber !== suggestionPos.line ||
-        currentPosition.column < suggestionPos.column ||
-        currentPosition.column > suggestionPos.column + 5
-      ) {
-        console.log("Position changed, cannot accept suggestion")
-        return false
+      if (modelTextAtCursor === cleanSuggestionText) {
+        console.log("Suggestion already inserted at cursor");
+        return false;
       }
 
       // Insert the suggestion text at the correct position
-      const range = new monaco.Range(suggestionPos.line, suggestionPos.column, suggestionPos.line, suggestionPos.column)
+      const range = new monaco.Range(position.lineNumber, position.column, position.lineNumber, position.column)
 
       // Use executeEdits to insert the text
-      const success = editor.executeEdits("ai-suggestion-accept", [
+      editor.executeEdits("ai-suggestion", [
         {
-          range: range,
+          range,
           text: cleanSuggestionText,
           forceMoveMarkers: true,
         },
       ])
 
-      if (!success) {
-        console.error("Failed to execute edit")
-        return false
-      }
-
       // Calculate new cursor position
       const lines = cleanSuggestionText.split("\n")
-      const endLine = suggestionPos.line + lines.length - 1
+      const endLine = position.lineNumber + lines.length - 1
       const endColumn =
-        lines.length === 1 ? suggestionPos.column + cleanSuggestionText.length : lines[lines.length - 1].length + 1
+        lines.length === 1 ? position.column + cleanSuggestionText.length : lines[lines.length - 1].length + 1
 
       // Move cursor to end of inserted text
       editor.setPosition({ lineNumber: endLine, column: endColumn })
 
-      console.log("SUCCESS: Suggestion accepted, new position:", `${endLine}:${endColumn}`)
+      // console.log("SUCCESS: Suggestion accepted, new position:", `${endLine}:${endColumn}`)
 
       // Clear the suggestion
       clearCurrentSuggestion()
@@ -235,95 +189,115 @@ const PlaygroundEditor = ({
         console.log("Reset suggestionAcceptedRef flag")
       }, 1000) // Increased delay to 1 second
     }
-  }, [clearCurrentSuggestion, onAcceptSuggestion]) 
+  }, [onAcceptSuggestion, clearCurrentSuggestion]) 
  
   // Check if there's an active inline suggestion at current position
-  const hasActiveSuggestionAtPosition = useCallback(() => {
-    if (!editorRef.current || !currentSuggestionRef.current) return false
+  // const hasActiveSuggestionAtPosition = useCallback(() => {
+  //   if (!editorRef.current || !currentSuggestionRef.current) return false
 
-    const position = editorRef.current.getPosition()
-    const suggestion = currentSuggestionRef.current
+  //   const position = editorRef.current.getPosition()
+  //   const suggestion = currentSuggestionRef.current
 
-    return (
-      position.lineNumber === suggestion.position.line &&
-      position.column >= suggestion.position.column &&
-      position.column <= suggestion.position.column + 2
-    )
-  }, [])
+  //   return (
+  //     position.lineNumber === suggestion.position.line &&
+  //     position.column >= suggestion.position.column &&
+  //     position.column <= suggestion.position.column + 2
+  //   )
+  // }, [])
 
  // Update inline completions when suggestion changes
-  useEffect(() => {
-    if (!editorRef.current || !monacoRef.current) return
+  // useEffect(() => {
+  //   if (!editorRef.current || !monacoRef.current) return
 
-    const editor = editorRef.current
-    const monaco = monacoRef.current
+  //   // const editor = editorRef.current
+  //   // const monaco = monacoRef.current
 
-    console.log("Suggestion changed", {
-      hasSuggestion: !!suggestion,
-      hasPosition: !!suggestionPosition,
-      isAccepting: isAcceptingSuggestionRef.current,
-      suggestionAccepted: suggestionAcceptedRef.current,
-    })
+  //   if (inlineCompletionProviderRef.current) {
+  //     inlineCompletionProviderRef.current.dispose();
+  //   }
 
-    // Don't update if we're in the middle of accepting a suggestion
-    if (isAcceptingSuggestionRef.current || suggestionAcceptedRef.current) {
-      console.log("Skipping update - currently accepting/accepted suggestion")
-      return
-    }
+  //   currentSuggestionRef.current = null;
 
-    // Dispose previous provider
-    if (inlineCompletionProviderRef.current) {
-      inlineCompletionProviderRef.current.dispose()
-      inlineCompletionProviderRef.current = null
-    }
+  //   if (suggestion) {
+  //     const language = getEditorLanguage(
+  //       activeFile?.fileExtension || ""
+  //     );
+  //     const provider = createInlineCompletionProvider(
+  //       monacoRef.current
+  //     );
 
-    // Clear current suggestion reference
-    currentSuggestionRef.current = null
+  //     inlineCompletionProviderRef.current =
+  //       monacoRef.current.languages.registerInlineCompletionsProvider(
+  //         language,
+  //         provider
+  //       );
 
-    // Register new provider if we have a suggestion
-    if (suggestion && suggestionPosition) {
-      console.log("Registering new inline completion provider")
+  //     setTimeout(() => {
+  //       editorRef.current?.trigger(
+  //         "ai",
+  //         "editor.action.inlineSuggest.trigger",
+  //         null
+  //       );
+  //     }, 50);
+  //   }    
+    
 
-      const language = getEditorLanguage(activeFile?.fileExtension || "")
-      const provider = createInlineCompletionProvider(monaco)
+  //   // // Don't update if we're in the middle of accepting a suggestion
+  //   // if (isAcceptingSuggestionRef.current || suggestionAcceptedRef.current) {
+  //   //   console.log("Skipping update - currently accepting/accepted suggestion")
+  //   //   return
+  //   // }
 
-      inlineCompletionProviderRef.current = monaco.languages.registerInlineCompletionsProvider(language, provider)
+  //   // // Dispose previous provider
+  //   // if (inlineCompletionProviderRef.current) {
+  //   //   inlineCompletionProviderRef.current.dispose()
+  //   //   inlineCompletionProviderRef.current = null
+  //   // }
 
-      // Small delay to ensure editor is ready, then trigger suggestions
-      setTimeout(() => {
-        if (editorRef.current && !isAcceptingSuggestionRef.current && !suggestionAcceptedRef.current) {
-          console.log("Triggering inline suggestions")
-          editor.trigger("ai", "editor.action.inlineSuggest.trigger", null)
-        }
-      }, 50)
-    }
+  //   // // Clear current suggestion reference
+  //   // currentSuggestionRef.current = null
 
-    return () => {
-      if (inlineCompletionProviderRef.current) {
-        inlineCompletionProviderRef.current.dispose()
-        inlineCompletionProviderRef.current = null
-      }
-    }
-  }, [suggestion, suggestionPosition, activeFile, createInlineCompletionProvider])
+  //   // // Register new provider if we have a suggestion
+  //   // if (suggestion && suggestionPosition) {
+  //   //   console.log("Registering new inline completion provider")
+
+  //   //   const language = getEditorLanguage(activeFile?.fileExtension || "")
+  //   //   const provider = createInlineCompletionProvider(monaco)
+
+  //   //   inlineCompletionProviderRef.current = monaco.languages.registerInlineCompletionsProvider(language, provider)
+
+  //   //   // Small delay to ensure editor is ready, then trigger suggestions
+  //   //   setTimeout(() => {
+  //   //     if (editorRef.current && !isAcceptingSuggestionRef.current && !suggestionAcceptedRef.current) {
+  //   //       console.log("Triggering inline suggestions")
+  //   //       editor.trigger("ai", "editor.action.inlineSuggest.trigger", null)
+  //   //     }
+  //   //   }, 50)
+  //   // }
+
+  //   return () => {
+  //     if (inlineCompletionProviderRef.current) {
+  //       inlineCompletionProviderRef.current.dispose()
+  //       inlineCompletionProviderRef.current = null
+  //     }
+  //   }
+  // }, [suggestion, activeFile, createInlineCompletionProvider])
+
 
   const handleEditorDidMount = (editor: any, monaco: Monaco) => {
       editorRef.current = editor
       monacoRef.current = monaco
-      console.log("Editor instance mounted:", !!editorRef.current)
+      // console.log("Editor instance mounted:", !!editorRef.current)
+
+      configureMonaco(monaco)
 
       editor.updateOptions({
         ...defaultEditorOptions,
         // Enable inline suggestions but with specific settings to prevent conflicts
-        inlineSuggest: {
-          enabled: true,
-          mode: "prefix",
-          suppressSuggestions: false,
-        },
+        inlineSuggest:{enabled: true},
         // Disable some conflicting suggest features
         suggest: {
           preview: false, // Disable preview to avoid conflicts
-          showInlineDetails: false,
-          insertMode: "replace",
         },
         // Quick suggestions
         quickSuggestions: {
@@ -335,13 +309,11 @@ const PlaygroundEditor = ({
         cursorSmoothCaretAnimation: "on",
       })
 
-      configureMonaco(monaco)
-
       // Keyboard shortcuts
-      editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Space, () => {
-        console.log("Ctrl+Space pressed, triggering suggestion")
-        onTriggerSuggestion("completion", editor)
-      })
+      // editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Space, () => {
+      //   console.log("Ctrl+Space pressed, triggering suggestion")
+      //   onTriggerSuggestion("completion", editor)
+      // })
 
       // CRITICAL: Override Tab key with high priority and prevent default Monaco behavior
       if (tabCommandRef.current) {
@@ -351,48 +323,36 @@ const PlaygroundEditor = ({
       tabCommandRef.current = editor.addCommand(
         monaco.KeyCode.Tab,
         () => {
-          console.log("TAB PRESSED", {
-            hasSuggestion: !!currentSuggestionRef.current,
-            hasActiveSuggestion: hasActiveSuggestionAtPosition(),
-            isAccepting: isAcceptingSuggestionRef.current,
-            suggestionAccepted: suggestionAcceptedRef.current,
-          })
+          // console.log("TAB PRESSED", {
+          //   hasSuggestion: !!currentSuggestionRef.current,
+          //   hasActiveSuggestion: hasActiveSuggestionAtPosition(),
+          //   isAccepting: isAcceptingSuggestionRef.current,
+          //   suggestionAccepted: suggestionAcceptedRef.current,
+          // })
 
-          // CRITICAL: Block if already processing
-          if (isAcceptingSuggestionRef.current) {
-            console.log("BLOCKED: Already in the process of accepting, ignoring Tab")
+          
+          if (isAcceptingSuggestionRef.current || suggestionAcceptedRef.current) {
+            editor.trigger("keyboard","tab",null)
             return
           }
 
-          // CRITICAL: Block if just accepted
-          if (suggestionAcceptedRef.current) {
-            console.log("BLOCKED: Suggestion was just accepted, using default tab")
-            editor.trigger("keyboard", "tab", null)
-            return
-          }
-
-          // If we have an active suggestion at the current position, try to accept it
-          if (currentSuggestionRef.current && hasActiveSuggestionAtPosition()) {
-            console.log("ATTEMPTING to accept suggestion with Tab")
+         
+          if (currentSuggestionRef.current) {
             const accepted = acceptCurrentSuggestion()
-            if (accepted) {
-              console.log("SUCCESS: Suggestion accepted via Tab, preventing default behavior")
-              return // CRITICAL: Return here to prevent default tab behavior
-            }
-            console.log("FAILED: Suggestion acceptance failed, falling through to default")
+            if(accepted) return
           }
 
           // Default tab behavior (indentation)
-          console.log("DEFAULT: Using default tab behavior")
+          //console.log("DEFAULT: Using default tab behavior")
           editor.trigger("keyboard", "tab", null)
         },
         // CRITICAL: Use specific context to override Monaco's built-in Tab handling
-        "editorTextFocus && !editorReadonly && !suggestWidgetVisible",
+        //"editorTextFocus && !editorReadonly && !suggestWidgetVisible",
       )
 
       // Escape to reject
       editor.addCommand(monaco.KeyCode.Escape, () => {
-        console.log("Escape pressed")
+        //console.log("Escape pressed")
         if (currentSuggestionRef.current) {
           onRejectSuggestion(editor)
           clearCurrentSuggestion()
@@ -400,84 +360,56 @@ const PlaygroundEditor = ({
       })
 
       // Listen for cursor position changes to hide suggestions when moving away
-      editor.onDidChangeCursorPosition((e: any) => {
-        if (isAcceptingSuggestionRef.current) return
-
-        const newPosition = e.position
-
-        // Clear existing suggestion if cursor moved away
-        if (currentSuggestionRef.current && !suggestionAcceptedRef.current) {
-          const suggestionPos = currentSuggestionRef.current.position
-
-          // If cursor moved away from suggestion position, clear it
-          if (
-            newPosition.lineNumber !== suggestionPos.line ||
-            newPosition.column < suggestionPos.column ||
-            newPosition.column > suggestionPos.column + 10
-          ) {
-            console.log("Cursor moved away from suggestion, clearing")
-            clearCurrentSuggestion()
-            onRejectSuggestion(editor)
-          }
+      editor.onDidChangeCursorPosition(() => {
+        if (suggestionTimeoutRef.current) {
+          clearTimeout(suggestionTimeoutRef.current);
         }
 
-        // Trigger new suggestion if appropriate (simplified)
-        if (!currentSuggestionRef.current && !suggestionLoading) {
-          // Clear any existing timeout
-          if (suggestionTimeoutRef.current) {
-            clearTimeout(suggestionTimeoutRef.current)
-          }
-
-          // Trigger suggestion with a delay
+        if (
+          !isAcceptingSuggestionRef.current &&
+          !suggestionLoading &&
+          !currentSuggestionRef.current
+        ) {
           suggestionTimeoutRef.current = setTimeout(() => {
-            onTriggerSuggestion("completion", editor)
-          }, 300)
+            onTriggerSuggestion("completion", editor);
+          }, 300);
         }
-      })
+      });     
+
 
       // Listen for content changes to detect manual typing over suggestions
       editor.onDidChangeModelContent((e: any) => {
         if (isAcceptingSuggestionRef.current) return
 
-        // If user types while there's a suggestion, clear it (unless it's our insertion)
-        if (currentSuggestionRef.current && e.changes.length > 0 && !suggestionAcceptedRef.current) {
+        if (
+          currentSuggestionRef.current &&
+          !suggestionAcceptedRef.current &&
+          e.changes.length > 0
+        ) {
           const change = e.changes[0]
 
-          // Check if this is our own suggestion insertion
           if (
             change.text === currentSuggestionRef.current.text ||
             change.text === currentSuggestionRef.current.text.replace(/\r/g, "")
           ) {
-            console.log("Our suggestion was inserted, not clearing")
             return
           }
 
-          // User typed something else, clear the suggestion
-          console.log("User typed while suggestion active, clearing")
           clearCurrentSuggestion()
         }
 
-        // Trigger context-aware suggestions on certain typing patterns
-        if (e.changes.length > 0 && !suggestionAcceptedRef.current) {
-          const change = e.changes[0]
+        const triggers = ["\n", "{", ".", "=", "(", ",", ";", ":"]
 
-          // Trigger suggestions after specific characters
-          if (
-            change.text === "\n" || // New line
-            change.text === "{" || // Opening brace
-            change.text === "." || // Dot notation
-            change.text === "=" || // Assignment
-            change.text === "(" || // Function call
-            change.text === "," || // Parameter separator
-            change.text === ":" || // Object property
-            change.text === ";" // Statement end
-          ) {
-            setTimeout(() => {
-              if (editorRef.current && !currentSuggestionRef.current && !suggestionLoading) {
-                onTriggerSuggestion("completion", editor)
-              }
-            }, 100) // Small delay to let the change settle
-          }
+        if (e.changes.length > 0 && triggers.includes(e.changes[0].text)) {
+          setTimeout(() => {
+            if (
+              editorRef.current &&
+              !currentSuggestionRef.current &&
+              !suggestionLoading
+            ) {
+              onTriggerSuggestion("completion", editorRef.current)
+            }
+          }, 100)
         }
       })
 
@@ -486,12 +418,12 @@ const PlaygroundEditor = ({
 
   const updateEditorLanguage = () => {
     if (!activeFile || !monacoRef.current || !editorRef.current) return
-    const model = editorRef.current.getModel()
-    if (!model) return
+    //const model = editorRef.current.getModel()
+    //if (!model) return
 
     const language = getEditorLanguage(activeFile.fileExtension || "")
     try {
-      monacoRef.current.editor.setModelLanguage(model, language)
+      monacoRef.current.editor.setModelLanguage(editorRef.current.getModel(), language)
     } catch (error) {
       console.warn("Failed to set editor language:", error)
     }
@@ -509,44 +441,43 @@ const PlaygroundEditor = ({
       }
       if (inlineCompletionProviderRef.current) {
         inlineCompletionProviderRef.current.dispose()
-        inlineCompletionProviderRef.current = null
+        //inlineCompletionProviderRef.current = null
       }
       if (tabCommandRef.current) {
         tabCommandRef.current.dispose()
-        tabCommandRef.current = null
+        //tabCommandRef.current = null
       }
     }
   }, [])
 
-return (
-    <div className="h-full relative">
-      {/* Loading indicator */}
-      {suggestionLoading && (
-        <div className="absolute top-2 right-2 z-10 bg-red-100 dark:bg-red-900 px-2 py-1 rounded text-xs text-red-700 dark:text-red-300 flex items-center gap-1">
-          <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-          AI thinking...
-        </div>
-      )}
+  return (
+      <div className="h-full relative">
+        {/* Loading indicator */}
+        {suggestionLoading && (
+          <div className="absolute top-2 right-2 z-10 bg-red-100 dark:bg-red-900 px-2 py-1 rounded text-xs text-red-700 dark:text-red-300 flex items-center gap-1">
+            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+            AI thinking...
+          </div>
+        )}
 
-      {/* Active suggestion indicator */}
-      {currentSuggestionRef.current && !suggestionLoading && (
-        <div className="absolute top-2 right-2 z-10 bg-green-100 dark:bg-green-900 px-2 py-1 rounded text-xs text-green-700 dark:text-green-300 flex items-center gap-1">
-          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-          Press Tab to accept
-        </div>
-      )}
+        {/* Active suggestion indicator */}
+        {currentSuggestionRef.current && !suggestionLoading && (
+          <div className="absolute top-2 right-2 z-10 bg-green-100 dark:bg-green-900 px-2 py-1 rounded text-xs text-green-700 dark:text-green-300 flex items-center gap-1">
+            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+            Press Tab to accept AI suggestion
+          </div>
+        )}
 
-      <Editor
-        height="100%"
-        value={content}
-        onChange={(value) => onContentChange(value || "")}
-        onMount={handleEditorDidMount}
-        language={activeFile ? getEditorLanguage(activeFile.fileExtension || "") : "plaintext"}
-        //@ts-ignore
-        options={defaultEditorOptions}
-      />
-    </div>
-  )
-};
+        <Editor
+          height="100%"
+          value={content}
+          onChange={(value) => onContentChange(value || "")}
+          onMount={handleEditorDidMount}
+          language={activeFile ? getEditorLanguage(activeFile.fileExtension || "") : "plaintext"}        
+          options={defaultEditorOptions}
+        />
+      </div>
+    )
+  };
 
 export default PlaygroundEditor

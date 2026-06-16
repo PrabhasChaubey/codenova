@@ -34,129 +34,95 @@ export const useAISuggestions = (): UseAISuggestionsReturn => {
         }));
     },[]);
 
-    const fetchSuggestion = useCallback(
-    async (type: string, editor: any) => {
+// FIX - move logic outside setState
+const fetchSuggestion = useCallback(async (type: string, editor: any) => {
+    if (!state.isEnabled || !editor) return;
 
-        setState((currentState) => {
-        if (!currentState.isEnabled) {
-            console.warn("AI suggestions are disabled");
-            return currentState;
-        }
+    const model = editor.getModel();
+    const cursorPosition = editor.getPosition();
+    if (!model || !cursorPosition) return;
 
-        if (!editor) {
-            console.warn("Editor instance is not available");
-            return currentState;
-        }
+    setState((prev) => ({ ...prev, isLoading: true }));
 
-        const model = editor.getModel();
-        const cursorPosition = editor.getPosition();
+    try {
+        const payload = {
+            fileContent: model.getValue(),
+            cursorLine: cursorPosition.lineNumber - 1,
+            cursorColumn: cursorPosition.column - 1,
+            suggestionType: type,
+        };
 
-        if (!model || !cursorPosition) {
-            console.warn("Editor model or cursor position is not available.");
-            return currentState;
-            }
-
-        const newState = { ...currentState, isLoading: true };
-
-            // perform the async operation
-            (
-                async () => {
-                try {
-                    const payload = {
-                        fileContent: model.getValue(),
-                        cursorLine: cursorPosition.lineNumber - 1,
-                        cursorColumn: cursorPosition.column - 1,
-                        suggestionType: type,
-                    };
-
-                    const response = await fetch("/api/code-suggestion", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(payload),
-                    });
-
-                    if(!response.ok){
-                        throw new Error(`API responded with status ${response.status}`)
-                    }
-
-                    const data=await response.json();
-
-                    if (data.suggestion) {
-                    const suggestionText = data.suggestion.trim();
-
-                    setState((prev) => ({
-                        ...prev,
-                        suggestion: suggestionText,
-                        position: {
-                        line: cursorPosition.lineNumber,
-                        column: cursorPosition.column,
-                        },
-                        isLoading: false,
-                    }));
-                    } else {
-                    console.warn("No suggestion received from API.");
-
-                    setState((prev) => ({
-                        ...prev,
-                        isLoading: false,
-                    }));
-                    }
-
-                } catch (error) {
-                    console.error("Error fetching code suggestion: ",error);
-                    setState((prev)=>({...prev,isLoading:false}));
-                }
-
-                }
-            )();
-
-        return newState;
+        const response = await fetch("/api/code-suggestion", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
         });
 
+        if (!response.ok) throw new Error(`API error ${response.status}`);
 
-    },[]); 
+        const data = await response.json();
 
-    const acceptSuggestion = useCallback(()=>{
-        (editor: any,monaco:any)=>{
-            setState((currentState)=>{
-                if(
-                    !currentState.suggestion ||
-                    !currentState.position ||
-                    !editor
-                ){
-                    return currentState;
-                }
+        console.log("💡 Full API response:", data);
+        console.log("💡 Suggestion text:", data.suggestion);
 
-                const { line, column } = currentState.position;
+        if (data.suggestion) {
+            console.log("✅ Setting suggestion in state...");
+            setState((prev) => ({
+                ...prev,
+                suggestion: data.suggestion.trim(),
+                position: {
+                    line: cursorPosition.lineNumber,
+                    column: cursorPosition.column,
+                },
+                isLoading: false,
+            }));
+        } else {
+            console.log("❌ No suggestion in response, data was:", data);
+            setState((prev) => ({ ...prev, isLoading: false }));
+        }
+    } catch (error) {
+        console.error("Error fetching suggestion:", error);
+        setState((prev) => ({ ...prev, isLoading: false }));
+    }
+}, [state.isEnabled]); 
 
-                const sanitizedSuggestion = currentState.suggestion.replace(
-                /^\d+:\s*/gm,
-                ""
-                );                
+const acceptSuggestion = useCallback((editor: any, monaco: any) => {
+    setState((currentState) => {
+        if (
+            !currentState.suggestion ||
+            !currentState.position ||
+            !editor
+        ) {
+            return currentState;
+        }
 
-                editor.executeEdits("", [
-                    {
-                        range: new monaco.Range(line, column, line, column),
-                        text: sanitizedSuggestion,
-                        forceMoveMarkers: true,
-                    },
-                ]);
+        const { line, column } = currentState.position;
 
-                // Clear decorations
-                if (editor && currentState.decoration.length > 0) {
-                editor.deltaDecorations(currentState.   decoration, []);
-                }
+        const sanitizedSuggestion = currentState.suggestion.replace(
+            /^\d+:\s*/gm,
+            ""
+        );
 
-                return {
-                    ...currentState,
-                    suggestion:null,
-                    position:null,
-                    decoration:[]
-                }
+        editor.executeEdits("", [
+            {
+                range: new monaco.Range(line, column, line, column),
+                text: sanitizedSuggestion,
+                forceMoveMarkers: true,
+            },
+        ]);
 
-            });
+        if (editor && currentState.decoration.length > 0) {
+            editor.deltaDecorations(currentState.decoration, []);
+        }
+
+        return {
+            ...currentState,
+            suggestion: null,
+            position: null,
+            decoration: [],
         };
-    },[]);
+    });
+}, []);
 
     const rejectSuggestion = useCallback((editor: any) => {
         setState((currentState) => {

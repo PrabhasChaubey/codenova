@@ -70,9 +70,9 @@ const PlaygroundEditor = ({
             {
               insertText: cleanSuggestion,
               range: new monaco.Range(
-                  editorRef.current.getPosition().line,
+                  editorRef.current.getPosition().lineNumber,
                   editorRef.current.getPosition().column,
-                  editorRef.current.getPosition().line,
+                  editorRef.current.getPosition().lineNumber,
                   editorRef.current.getPosition().column,
               ),
               kind: monaco.languages.CompletionItemKind.Snippet,
@@ -82,7 +82,7 @@ const PlaygroundEditor = ({
               sortText: "0000", // High priority
               filterText: "",
               //prevent monaco from insertng text itself
-              insertTextRules: monaco.languages.CompletionItemInsertTextRule.KeepWhitspace,
+              insertTextRules: monaco.languages.CompletionItemInsertTextRule.KeepWhitespace,
             },
           ],
         }
@@ -282,6 +282,47 @@ const PlaygroundEditor = ({
   //     }
   //   }
   // }, [suggestion, activeFile, createInlineCompletionProvider])
+
+useEffect(() => {
+  if (!editorRef.current || !monacoRef.current) return
+
+  // Don't update if we're in the middle of accepting
+  if (isAcceptingSuggestionRef.current || suggestionAcceptedRef.current) return
+
+  // Dispose previous provider
+  if (inlineCompletionProviderRef.current) {
+    inlineCompletionProviderRef.current.dispose()
+    inlineCompletionProviderRef.current = null
+  }
+
+  currentSuggestionRef.current = null
+
+  if (suggestion) {
+    const language = getEditorLanguage(activeFile?.fileExtension || "")
+    const provider = createInlineCompletionProvider(monacoRef.current)
+
+    inlineCompletionProviderRef.current =
+      monacoRef.current.languages.registerInlineCompletionsProvider(language, provider)
+
+    // Trigger inline suggestion display
+    setTimeout(() => {
+      if (
+        editorRef.current &&
+        !isAcceptingSuggestionRef.current &&
+        !suggestionAcceptedRef.current
+      ) {
+        editorRef.current.trigger("ai", "editor.action.inlineSuggest.trigger", null)
+      }
+    }, 50)
+  }
+
+  return () => {
+    if (inlineCompletionProviderRef.current) {
+      inlineCompletionProviderRef.current.dispose()
+      inlineCompletionProviderRef.current = null
+    }
+  }
+}, [suggestion, activeFile, createInlineCompletionProvider])
 
 
   const handleEditorDidMount = (editor: any, monaco: Monaco) => {
